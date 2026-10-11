@@ -42,31 +42,67 @@ This command initializes the vacation_planner Crew, assembling the agents and as
 
 This example, unmodified, will run the create a `report.md` file with the output of a research on LLMs in the root folder.
 
-## Testing the AgentCore container locally
+## Running and testing the AgentCore container
 
-Docker requires a Serper API key and AWS credentials that can invoke Amazon Bedrock. Keep those values in a local `.env` file; `.dockerignore` prevents that file from being included in the image build.
+The container exposes the AgentCore invocation API on port `8080`. It does not serve a website at `/`; send a `POST` request to `/invocations` to run the vacation planner. Docker requires a Serper API key and AWS credentials that can invoke Amazon Bedrock. Keep the Serper key in a local `.env` file; `.dockerignore` prevents that file from being included in the image build.
 
 ```env
 SERPER_API_KEY=your-serper-api-key
 AWS_DEFAULT_REGION=us-west-2
 ```
 
-On Windows PowerShell, from the `vacation_planner` project directory:
+### Test locally
+
+From the `vacation_planner` project directory, build the image:
 
 ```powershell
 docker build -t vacation-planner:latest .
+```
+
+Run the container. For AWS SSO credentials in Windows PowerShell, sign in first and mount your AWS config:
+
+```powershell
+aws sso login --profile default
 docker run --rm --name vacation-planner -p 8080:8080 --env-file .env -v "$HOME\.aws:/root/.aws:ro" -e AWS_PROFILE=default vacation-planner:latest
 ```
 
-For local AWS SSO credentials, sign in first with `aws sso login --profile default`. Alternatively, provide AWS credentials through environment variables or another standard AWS credential source, and omit the profile mount and `AWS_PROFILE` setting. Do not bake AWS credentials into the image.
+Alternatively, provide credentials through environment variables or another standard AWS credential source, and omit the profile mount and `AWS_PROFILE` setting. Do not bake AWS credentials into the image.
 
-In a second terminal, invoke the local AgentCore HTTP endpoint:
+In a second terminal, invoke the local endpoint with `curl`:
 
-```powershell
-Invoke-RestMethod -Method Post -Uri http://localhost:8080/invocations -ContentType "application/json" -Body '{"topic":"Paris"}'
+```bash
+curl -X POST http://localhost:8080/invocations \
+  -H "Content-Type: application/json" \
+  -d '{"topic":"Paris"}'
 ```
 
-The call requires working AWS Bedrock access and a valid Serper key; merely starting the container does not verify those external services. For a deployed AgentCore runtime, attach an execution role with the required Bedrock permissions and configure `SERPER_API_KEY` as a runtime secret/environment variable.
+### Build and test on an EC2 instance
+
+Pull the code and, from the project directory on EC2, build and run the container. The EC2 instance should have an IAM role with permission to invoke the configured Bedrock model. Put the Serper key and region in `.env`; do not put AWS credentials there when using the instance role.
+
+```bash
+git pull
+docker build -t vacation-planner:latest .
+docker run --rm --name vacation-planner -p 8080:8080 --env-file .env vacation-planner:latest
+```
+
+From the EC2 instance, test with:
+
+```bash
+curl -X POST http://localhost:8080/invocations \
+  -H "Content-Type: application/json" \
+  -d '{"topic":"Paris"}'
+```
+
+To send the request from your own computer, allow inbound TCP port `8080` in the EC2 security group, preferably restricted to your IP, then use the EC2 public IP:
+
+```bash
+curl -X POST http://EC2_PUBLIC_IP:8080/invocations \
+  -H "Content-Type: application/json" \
+  -d '{"topic":"Paris"}'
+```
+
+The request requires working AWS Bedrock access and a valid Serper key. For a deployed AgentCore runtime, attach an execution role with the required Bedrock permissions and configure `SERPER_API_KEY` as a runtime secret/environment variable.
 
 ## Understanding Your Crew
 
