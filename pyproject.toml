@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "vacation_planner"
+version = "0.1.0"
+description = "vacation_planner using crewAI"
+authors = ["Your Name <you@example.com>"]
+packages = [{include = "vacation_planner", from = "src"}]
+
+[tool.poetry.dependencies]
+python = ">=3.10,<=3.13"
+crewai = "^0.41.1"
+crewai-tools = ">=0.5.0"
+boto3 = "*"
+streamlit = "*"
+bedrock-agentcore = "*"
+
+[tool.poetry.scripts]
+vacation_planner = "vacation_planner.main:run"
+train = "vacation_planner.main:train"
+replay = "vacation_planner.main:replay"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
