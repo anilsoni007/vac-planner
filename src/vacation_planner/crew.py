@@ -1,4 +1,4 @@
-from crewai import Agent, Crew, Process, Task, LLM
+from crewai import Agent, Crew, Process, Task
 from crewai.project import CrewBase, agent, crew, task
 from crewai_tools import SerperDevTool
 from bedrock_agentcore import BedrockAgentCoreApp
@@ -13,7 +13,7 @@ if not serper_api_key:
 	raise RuntimeError("SERPER_API_KEY must be set in the environment or a local .env file.")
 
 serper_dev_tool = SerperDevTool(api_key=serper_api_key)
-llm = LLM(model=os.environ.get("MODEL", "bedrock/us.amazon.nova-micro-v1:0"))
+llm = os.environ.get("MODEL", "bedrock/us.amazon.nova-micro-v1:0")
 
 
 # Uncomment the following line to use an example of a custom tool
