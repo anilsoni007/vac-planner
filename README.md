@@ -42,6 +42,32 @@ This command initializes the vacation_planner Crew, assembling the agents and as
 
 This example, unmodified, will run the create a `report.md` file with the output of a research on LLMs in the root folder.
 
+## Testing the AgentCore container locally
+
+Docker requires a Serper API key and AWS credentials that can invoke Amazon Bedrock. Keep those values in a local `.env` file; `.dockerignore` prevents that file from being included in the image build.
+
+```env
+SERPER_API_KEY=your-serper-api-key
+AWS_DEFAULT_REGION=us-west-2
+```
+
+On Windows PowerShell, from the `vacation_planner` project directory:
+
+```powershell
+docker build -t vacation-planner:latest .
+docker run --rm --name vacation-planner -p 8080:8080 --env-file .env -v "$HOME\.aws:/root/.aws:ro" -e AWS_PROFILE=default vacation-planner:latest
+```
+
+For local AWS SSO credentials, sign in first with `aws sso login --profile default`. Alternatively, provide AWS credentials through environment variables or another standard AWS credential source, and omit the profile mount and `AWS_PROFILE` setting. Do not bake AWS credentials into the image.
+
+In a second terminal, invoke the local AgentCore HTTP endpoint:
+
+```powershell
+Invoke-RestMethod -Method Post -Uri http://localhost:8080/invocations -ContentType "application/json" -Body '{"topic":"Paris"}'
+```
+
+The call requires working AWS Bedrock access and a valid Serper key; merely starting the container does not verify those external services. For a deployed AgentCore runtime, attach an execution role with the required Bedrock permissions and configure `SERPER_API_KEY` as a runtime secret/environment variable.
+
 ## Understanding Your Crew
 
 The vacation_planner Crew is composed of multiple AI agents, each with unique roles, goals, and tools. These agents collaborate on a series of tasks, defined in `config/tasks.yaml`, leveraging their collective skills to achieve complex objectives. The `config/agents.yaml` file outlines the capabilities and configurations of each agent in your crew.

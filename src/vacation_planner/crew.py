@@ -2,22 +2,18 @@ from crewai import Agent, Crew, Process, Task, LLM
 from crewai.project import CrewBase, agent, crew, task
 from crewai_tools import SerperDevTool
 from bedrock_agentcore import BedrockAgentCoreApp
+from dotenv import load_dotenv
 import os
-import boto3
 
 
-# Load credentials from SSO profile locally, IAM role automatically on EC2/Docker
-try:
-    _session = boto3.Session(profile_name=os.environ.get("AWS_PROFILE", "default"))
-    _creds = _session.get_credentials().get_frozen_credentials()
-    os.environ["AWS_ACCESS_KEY_ID"] = _creds.access_key
-    os.environ["AWS_SECRET_ACCESS_KEY"] = _creds.secret_key
-    os.environ["AWS_SESSION_TOKEN"] = _creds.token or ""
-except Exception:
-    pass  # Running on EC2 with IAM role - boto3 picks up credentials automatically
+load_dotenv()
 
-serper_dev_tool = SerperDevTool(api_key=os.environ.get("SERPER_API_KEY"))
-llm = LLM(model=os.environ.get("MODEL"))
+serper_api_key = os.environ.get("SERPER_API_KEY")
+if not serper_api_key:
+	raise RuntimeError("SERPER_API_KEY must be set in the environment or a local .env file.")
+
+serper_dev_tool = SerperDevTool(api_key=serper_api_key)
+llm = LLM(model=os.environ.get("MODEL", "bedrock/us.amazon.nova-micro-v1:0"))
 
 
 # Uncomment the following line to use an example of a custom tool
@@ -81,12 +77,11 @@ app = BedrockAgentCoreApp()
 @app.entrypoint
 def invoke(payload: dict) -> dict:
 	topic = payload.get("topic", "Paris")
-	VacationPlannerCrew().crew().kickoff(inputs={"topic": topic})
-	report_content = ""
-	if os.path.exists("report.md"):
-		with open("report.md", "r", encoding="utf-8") as f:
-			report_content = f.read()
-	return {"status": "success", "topic": topic, "report": report_content}
+	if not isinstance(topic, str) or not topic.strip():
+		raise ValueError("The 'topic' field must be a non-empty string.")
+
+	result = VacationPlannerCrew().crew().kickoff(inputs={"topic": topic.strip()})
+	return {"status": "success", "topic": topic.strip(), "report": str(result)}
 
 if __name__ == "__main__":
 	app.run()
