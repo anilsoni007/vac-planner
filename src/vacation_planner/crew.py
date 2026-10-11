@@ -6,13 +6,15 @@ import os
 import boto3
 
 
-# Use SSO profile credentials directly
-_session = boto3.Session(profile_name="default")
-_creds = _session.get_credentials().get_frozen_credentials()
-os.environ["AWS_ACCESS_KEY_ID"] = _creds.access_key
-os.environ["AWS_SECRET_ACCESS_KEY"] = _creds.secret_key
-os.environ["AWS_SESSION_TOKEN"] = _creds.token or ""
-os.environ["AWS_DEFAULT_REGION"] = "us-west-2"
+# Load credentials from SSO profile locally, IAM role automatically on EC2/Docker
+try:
+    _session = boto3.Session(profile_name=os.environ.get("AWS_PROFILE", "default"))
+    _creds = _session.get_credentials().get_frozen_credentials()
+    os.environ["AWS_ACCESS_KEY_ID"] = _creds.access_key
+    os.environ["AWS_SECRET_ACCESS_KEY"] = _creds.secret_key
+    os.environ["AWS_SESSION_TOKEN"] = _creds.token or ""
+except Exception:
+    pass  # Running on EC2 with IAM role - boto3 picks up credentials automatically
 
 serper_dev_tool = SerperDevTool(api_key=os.environ.get("SERPER_API_KEY"))
 llm = LLM(model=os.environ.get("MODEL"))
