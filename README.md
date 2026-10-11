@@ -78,7 +78,7 @@ curl -X POST http://localhost:8080/invocations \
 
 ### Build and test on an EC2 instance
 
-Pull the code and, from the project directory on EC2, build and run the container. The EC2 instance should have an IAM role with permission to invoke the configured Bedrock model. Put the Serper key and region in `.env`; do not put AWS credentials there when using the instance role.
+Pull the code and, from the project directory on EC2, build and run the container. The Dockerfile targets ARM64 for AgentCore. On an ARM64 EC2 instance, use the commands below; on an x86_64 host, use the Buildx cross-build instructions in the next section. The EC2 instance should have an IAM role with permission to invoke the configured Bedrock model. Put the Serper key and region in `.env`; do not put AWS credentials there when using the instance role.
 
 ```bash
 git pull
@@ -103,6 +103,42 @@ curl -X POST http://EC2_PUBLIC_IP:8080/invocations \
 ```
 
 The request requires working AWS Bedrock access and a valid Serper key. For a deployed AgentCore runtime, attach an execution role with the required Bedrock permissions and configure `SERPER_API_KEY` as a runtime secret/environment variable.
+
+The Docker image installs the pinned runtime dependencies in `requirements.txt` and starts the AgentCore app with AWS OpenTelemetry auto-instrumentation. The image sets `AGENT_OBSERVABILITY_ENABLED=true`, exports traces and metrics over OTLP HTTP/protobuf, and identifies the service as `vacation_planner_agent`. Configure the AgentCore runtime's observability destination and execution-role permissions in AWS so the runtime can receive and publish telemetry.
+
+### Build and push an ARM64 image for AgentCore
+
+AgentCore requires an ARM64 container image. Build and push the image for `linux/arm64`, even if your Docker host is an x86_64 machine. Set `ECR_IMAGE` to your ECR repository URI and ensure the repository exists:
+
+On an x86_64 EC2 host, first register ARM64 emulation and create a Buildx builder that can use it. These setup commands require permission to run a privileged container. If you already created the builder, use `docker buildx use vacation-planner-arm64` instead of creating it again.
+
+```bash
+docker run --privileged --rm tonistiigi/binfmt --install arm64
+docker buildx create --name vacation-planner-arm64 --driver docker-container --use
+docker buildx inspect --bootstrap
+```
+
+Check that the builder reports `linux/arm64` under its supported platforms. Then log in to ECR and build/push:
+
+```bash
+export AWS_REGION=us-west-2
+export ECR_IMAGE=211125418300.dkr.ecr.us-west-2.amazonaws.com/vacation-planner:latest
+
+aws ecr get-login-password --region "$AWS_REGION" \
+  | docker login --username AWS --password-stdin 211125418300.dkr.ecr.us-west-2.amazonaws.com
+
+docker buildx build --platform linux/arm64 \
+  -t "$ECR_IMAGE" \
+  --push .
+```
+
+Confirm the image published to ECR supports ARM64 before using that URI when creating the AgentCore runtime:
+
+```bash
+docker buildx imagetools inspect "$ECR_IMAGE"
+```
+
+The output should list `linux/arm64`. Rebuild and push the image after code changes; AgentCore must be configured with the ECR URI of that ARM64 image.
 
 ## Understanding Your Crew
 
