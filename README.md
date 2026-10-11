@@ -104,7 +104,7 @@ curl -X POST http://EC2_PUBLIC_IP:8080/invocations \
 
 The request requires working AWS Bedrock access and a valid Serper key. For a deployed AgentCore runtime, attach an execution role with the required Bedrock permissions and configure `SERPER_API_KEY` as a runtime secret/environment variable.
 
-The Docker image installs the pinned runtime dependencies in `requirements.txt` and starts the AgentCore app with AWS OpenTelemetry auto-instrumentation. The image sets `AGENT_OBSERVABILITY_ENABLED=true`, exports traces and metrics over OTLP HTTP/protobuf, and identifies the service as `vacation_planner_agent`. Configure the AgentCore runtime's observability destination and execution-role permissions in AWS so the runtime can receive and publish telemetry.
+The Docker image installs the pinned runtime dependencies in `requirements.txt` and starts the AgentCore app with AWS OpenTelemetry auto-instrumentation. CrewAI is pinned to `1.15.27`, matching `pyproject.toml` and the AWS CrewAI instrumentation's supported `>=1.10,<2` range; older CrewAI releases can emit incompatible event shapes and break invocations. The image sets `AGENT_OBSERVABILITY_ENABLED=true`, exports traces and metrics over OTLP HTTP/protobuf, and identifies the service as `vacation_planner_agent`. It also disables CrewAI's own telemetry to avoid duplicate instrumentation and redacts prompt, response, and tool content from exported spans. Configure the AgentCore runtime's observability destination and execution-role permissions in AWS so the runtime can receive and publish telemetry.
 
 ### Build and push an ARM64 image for AgentCore
 

@@ -27,6 +27,8 @@ ENV OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
 ENV AGENT_OBSERVABILITY_ENABLED=true
 ENV OTEL_TRACES_SAMPLER=always_on
 ENV OTEL_RESOURCE_ATTRIBUTES=service.namespace=AgentCore,service.version=1.0
+ENV CREWAI_DISABLE_TELEMETRY=true
+ENV AWS_REDACT_SPAN_ATTRIBUTES=gen_ai.input.messages,gen_ai.output.messages,gen_ai.system_instructions,gen_ai.agent.description,gen_ai.tool.call.arguments,gen_ai.tool.call.result,gen_ai.tool.definitions,gen_ai.tool.description
 
 EXPOSE 8080
 
